@@ -1,5 +1,13 @@
 # EditMenu Translate Sheet - Claude AI Research Agent
 
+## Rules for Claude
+
+1. **Ask questions when uncertain.** Do not guess or assume. If information is incomplete or ambiguous, ask clarifying questions. Generate "Open Questions" when discovering unknowns during research or implementation.
+
+2. **Update CLAUDE.md on explicit request.** When the user says "keep in mind", "remember", or similar phrases indicating a persistent rule, add it to this file immediately.
+
+---
+
 ## Project Overview
 
 iOS proof-of-concept app that hijacks the system "Translate" callout (iOS 18.4+) to provide quick access to Claude AI for researching selected text topics.
@@ -20,7 +28,8 @@ Required Components:
 └── TranslationUIProviderContext → inputText property
 ```
 
-**Minimum iOS Version**: 18.4
+**Platform**: iPhone only (no iPad/Mac support for now)
+**Minimum iOS Version**: 18.4 (TranslationUIProvider not available in earlier 18.x)
 **Framework**: SwiftUI required (no UIKit direct support)
 
 ### Claude API Integration
@@ -50,6 +59,18 @@ Alternative SDKs (less recommended):
 ### Presentation Behavior
 The system controls presentation via private `_UIRemoteViewController` over XPC. Your extension's SwiftUI view is rendered in a separate process. You cannot customize detents, grabbers, or presentation style - the system handles this.
 
+## App Store Configuration
+
+**Platform:** iPhone only
+**Category:** Reference (primary), Productivity (secondary)
+- Reference aligns with where translation apps (DeepL, Google Translate) are listed
+- Users searching for translation alternatives browse Reference
+- Matches the TranslationUIProvider system integration
+
+**Minimum iOS Version:** 18.4 (TranslationUIProvider introduced March 31, 2025)
+
+---
+
 ## App Store Review Risk
 
 **Critical Consideration**: This app uses "Translate" as an entry point but provides AI research chat instead of translation. Apple may reject because:
@@ -58,21 +79,50 @@ The system controls presentation via private `_UIRemoteViewController` over XPC.
 - Users expect translation when tapping "Translate"
 
 **Possible Mitigations**:
-- Include basic translation as a secondary feature
-- Frame the app as "Translate & Research"
+- Include basic translation as the first step in the workflow
+- Frame the app as "Translate then Discuss" - translation is the entry point, discussion is the value-add
 - Be transparent in App Store description
 
 ## Project Structure
 
+Hybrid approach: extension logic in SPM package, Xcode-required files in target directories.
+Swift package isolated in `/translate-then-discuss` to separate from docs and other project assets.
+
 ```
-editmenu-translate-sheet-claude/
-├── docs/                           # Research and planning documents
-│   ├── PLAN.md                     # Core workflow options and decisions
-│   ├── CONCEPT-ios-text-selection-callout-bar.md   # Callout bar research
-│   └── CONCEPT-ios-translate-callout-item.md       # TranslationUIProvider research
-├── CLAUDE.md                       # This file
-└── [App source - TBD]
+editmenu-translate-sheet-claude/           # Repository root
+├── CLAUDE.md                              # This file
+├── docs/                                  # Research and planning documents
+│   ├── PLAN.md
+│   ├── CONCEPT-ios-text-selection-callout-bar.md
+│   ├── CONCEPT-ios-translate-callout-item.md
+│   └── RESEARCH-apple-developer-program-requirements.md
+├── landing/                               # (future) Landing page assets
+└── translate-then-discuss/                # Swift package root
+    ├── Package.swift                      # SPM manifest
+    ├── Sources/
+    │   └── TranslationFeature/            # ALL extension logic (testable)
+    │       ├── TranslationProviderScene.swift
+    │       ├── ChatView.swift
+    │       ├── ClaudeService.swift
+    │       ├── Models/
+    │       └── Resources/
+    │           └── Assets.xcassets
+    └── App/
+        ├── EditMenuTranslate.xcodeproj    # Xcode project (user-managed)
+        ├── iOS/                           # Main app target (minimal)
+        │   ├── App.swift
+        │   ├── Info.plist                 # MUST be here (build-time config)
+        │   └── App.entitlements           # MUST be here (code signing)
+        └── TranslationExtension/          # Extension target (thin wrapper)
+            ├── Main.swift                 # Imports TranslationFeature
+            ├── Info.plist                 # MUST be here (extension config)
+            └── Extension.entitlements     # MUST be here (extension entitlements)
 ```
+
+**Why Info.plist and .entitlements can't be in a package:**
+- Info.plist: Xcode substitutes build variables like `$(PRODUCT_BUNDLE_IDENTIFIER)`
+- .entitlements: Embedded into binary signature by `codesign` during build
+- Both must be associated with an Xcode target, not a Swift Package product
 
 ## Development Guidelines
 
@@ -103,6 +153,12 @@ TranslationUIProvider requires SwiftUI. Use UIHostingController only if bridging
 2. How to structure the Claude chat experience within the constrained sheet UI
 3. Whether to include basic translation to satisfy App Store review
 4. Chat history persistence strategy (local vs. synced)
+5. Does TranslationUIProvider require capability request approval, or is it auto-available to paid accounts?
+6. Can extension code be tested in isolation without the system "Translate" trigger?
+
+## Research Documents
+
+- [Apple Developer Program Requirements](docs/RESEARCH-apple-developer-program-requirements.md) - Analysis of free vs paid account capabilities for TranslationUIProvider
 
 ## Commands
 
