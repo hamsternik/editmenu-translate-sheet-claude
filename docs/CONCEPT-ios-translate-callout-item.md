@@ -18,6 +18,145 @@ Critically, none of these APIs allow a third-party app to intercept or replace t
 
 ---
 
+## Translation Framework Implementation Guide
+
+This section provides practical code examples for implementing translation using Apple's Translation framework. Relevant for adding translation as a feature in your TranslationUIProvider extension.
+
+### Two Approaches: Overlay vs Programmatic
+
+**1. Translation Overlay (Simple)**
+
+The `.translationPresentation()` modifier displays Apple's system translation UI:
+
+```swift
+import SwiftUI
+import Translation
+
+struct ContentView: View {
+    @State private var showTranslation = false
+    @State private var textToTranslate = "Hello, world!"
+
+    var body: some View {
+        VStack {
+            Text(textToTranslate)
+            Button("Translate") {
+                showTranslation = true
+            }
+        }
+        .translationPresentation(isPresented: $showTranslation, text: textToTranslate)
+    }
+}
+```
+
+With replacement action (allows replacing original text with translation):
+
+```swift
+.translationPresentation(isPresented: $showTranslation, text: textToTranslate) { translatedText in
+    textToTranslate = translatedText
+}
+```
+
+**2. Programmatic Translation (TranslationSession)**
+
+For custom UI and batch processing:
+
+```swift
+import SwiftUI
+import Translation
+
+struct CustomTranslationView: View {
+    @State private var configuration: TranslationSession.Configuration?
+    @State private var sourceText = "Hello"
+    @State private var translatedText = ""
+
+    var body: some View {
+        VStack {
+            Text(translatedText)
+            Button("Translate to Spanish") {
+                configuration = TranslationSession.Configuration(
+                    source: Locale.Language(identifier: "en"),
+                    target: Locale.Language(identifier: "es")
+                )
+            }
+        }
+        .translationTask(configuration) { session in
+            let response = try await session.translate(sourceText)
+            translatedText = response.targetText
+        }
+    }
+}
+```
+
+### Batch Translation
+
+For translating multiple strings simultaneously:
+
+```swift
+.translationTask(configuration) { session in
+    let requests = textsToTranslate.enumerated().map { index, text in
+        TranslationSession.Request(sourceText: text, clientIdentifier: "\(index)")
+    }
+
+    // Option 1: Get all at once (maintains order)
+    let responses = try await session.translations(from: requests)
+
+    // Option 2: Stream results
+    for try await response in session.translate(batch: requests) {
+        // Handle each response as it arrives
+    }
+}
+```
+
+**Constraint:** All requests in a batch must share the same source language.
+
+### Language Availability
+
+Check if translation models are available before translating:
+
+```swift
+let availability = LanguageAvailability()
+let status = await availability.status(
+    from: Locale.Language(identifier: "en"),
+    to: Locale.Language(identifier: "ja")
+)
+
+switch status {
+case .installed:
+    // Ready to translate offline
+case .supported:
+    // Model available for download
+case .unsupported:
+    // Language pair not supported
+}
+```
+
+Pre-download models for offline use:
+
+```swift
+.translationTask(configuration) { session in
+    try await session.prepareTranslation()
+    // Now models are cached locally
+}
+```
+
+### Key Constraints
+
+| Constraint | Details |
+|------------|---------|
+| **Device only** | Simulator unsupported; must test on physical device |
+| **SwiftUI only** | No UIKit API; use `UIHostingController` to bridge |
+| **Single source language per batch** | Cannot mix English and Spanish strings in same batch |
+| **Session lifecycle** | Tied to SwiftUI view; do not persist beyond view lifetime |
+| **~20-30 languages** | Same languages as Apple Translate app |
+
+### Sources
+
+- [Using Translation API in Swift and SwiftUI - AppCoda](https://www.appcoda.com/translation-api/)
+- [Free, on-device translations with the Swift Translation API - polpiella.dev](https://www.polpiella.dev/swift-translation-api/)
+- [WWDC 2024 Session 10117 - Meet the Translation API](https://developer.apple.com/videos/play/wwdc2024/10117/)
+
+---
+
 ## iOS 18.4 opened the Translate callout via `TranslationUIProvider`
 
 The breakthrough came in **iOS 18.4** (March 31, 2025), when Apple introduced a separate framework — **`TranslationUIProvider`** — that lets third-party apps register as the system's default translation provider. This is entirely distinct from the `Translation` framework. When a user sets a third-party app as default at **Settings → Apps → Default Apps → Translation**, the system "Translate" callout item in text selection across all apps (Safari, Notes, Messages, etc.) routes to that app's extension instead of Apple Translate.

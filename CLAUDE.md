@@ -6,6 +6,8 @@
 
 2. **Update CLAUDE.md on explicit request.** When the user says "keep in mind", "remember", or similar phrases indicating a persistent rule, add it to this file immediately.
 
+3. **Design workflow: PLAN.md first.** When designing or making architectural decisions, update `docs/PLAN.md` first. Only update CLAUDE.md with finals extracted from the plan file. PLAN.md is the working document; CLAUDE.md holds confirmed decisions.
+
 ---
 
 ## Project Overview
@@ -159,6 +161,11 @@ TranslationUIProvider requires SwiftUI. Use UIHostingController only if bridging
 ## Research Documents
 
 - [Apple Developer Program Requirements](docs/RESEARCH-apple-developer-program-requirements.md) - Analysis of free vs paid account capabilities for TranslationUIProvider
+
+## Inspiration / References
+
+- [Reddit: Level Up iOS Translation 18.4 AI Translation](https://www.reddit.com/r/iosapps/comments/1k9yucg/level_up_ios_translation_184_ai_translation/) - Similar concept using TranslationUIProvider
+- [Reddit: AIBoard - AI Keyboard on iOS](https://www.reddit.com/r/iosapps/comments/1btv926/introducing_an_ai_keyboard_on_ios_aiboard/) - Alternative approach using custom keyboard instead of TranslationUIProvider
 
 ## Commands
 
